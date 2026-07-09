@@ -1,0 +1,2776 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manufacturing Defect Detection using Computer Vision</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --blue-900: #0A1B33;
+            --blue-800: #0D2A52;
+            --blue-700: #0F62FE;
+            --blue-600: #3B82F6;
+            --blue-100: #E8F0FE;
+            --teal-500: #00BFB3;
+            --teal-400: #2DD4CB;
+            --teal-100: #E1F7F5;
+            --violet-500: #7C6BFF;
+            --gray-50: #F6F8FB;
+            --gray-100: #EEF2F6;
+            --gray-200: #E3E8EF;
+            --gray-300: #CBD4E1;
+            --gray-500: #8592A6;
+            --gray-600: #5B6472;
+            --ink: #131C2B;
+            --white: #FFFFFF;
+            --success: #12B76A;
+            --success-bg: #E7F9EF;
+            --danger: #F04438;
+            --danger-bg: #FDEDEC;
+            --radius-lg: 22px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
+            --shadow-soft: 0 10px 30px rgba(13, 42, 82, 0.07);
+            --shadow-lift: 0 24px 55px rgba(13, 42, 82, 0.16);
+            --shadow-glow: 0 0 0 1px rgba(15, 98, 254, 0.08), 0 20px 50px -12px rgba(15, 98, 254, 0.25);
+            --ease-out: cubic-bezier(.16, 1, .3, 1);
+            --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        ::selection {
+            background: var(--blue-700);
+            color: #fff;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 1px 1px, rgba(15, 98, 254, 0.06) 1px, transparent 0) 0 0/28px 28px,
+                linear-gradient(180deg, #F7F9FC 0%, #EEF2F8 45%, #EAF0F8 100%);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            opacity: 0;
+            transition: opacity .8s var(--ease-out);
+            position: relative;
+        }
+
+        body.ready {
+            opacity: 1;
+        }
+
+        h1,
+        h2,
+        h3,
+        .display {
+            font-family: 'Space Grotesk', sans-serif;
+            letter-spacing: -0.01em;
+        }
+
+        .mono {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .wrap {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 40px;
+        }
+
+        /* ============ CUSTOM CURSOR ============ */
+        html.custom-cursor * {
+            cursor: none !important;
+        }
+
+        .cursor-dot,
+        .cursor-ring,
+        .cursor-trail {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate3d(-50%, -50%, 0);
+            will-change: transform;
+        }
+
+        .cursor-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--blue-700);
+            transition: opacity .2s ease;
+        }
+
+        .cursor-ring {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(15, 98, 254, 0.55);
+            background: radial-gradient(circle, rgba(15, 98, 254, 0.08), transparent 70%);
+            transition: width .3s var(--ease-spring), height .3s var(--ease-spring), border-color .3s ease, background .3s ease, opacity .2s ease;
+        }
+
+        .cursor-ring.hover {
+            width: 64px;
+            height: 64px;
+            border-color: rgba(0, 191, 179, 0.6);
+            background: radial-gradient(circle, rgba(0, 191, 179, 0.14), transparent 70%);
+        }
+
+        .cursor-trail {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--teal-400);
+            opacity: 0.5;
+        }
+
+        @media (pointer:coarse) {
+
+            .cursor-dot,
+            .cursor-ring,
+            .cursor-trail {
+                display: none;
+            }
+        }
+
+        /* click ripple / splash */
+        .splash-ripple {
+            position: fixed;
+            z-index: 9998;
+            pointer-events: none;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(15, 98, 254, 0.35), rgba(0, 191, 179, 0.12) 55%, transparent 75%);
+            transform: translate(-50%, -50%) scale(0);
+            animation: splash .7s var(--ease-out) forwards;
+        }
+
+        @keyframes splash {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* mouse-following ambient light */
+        .mouse-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 600px;
+            height: 600px;
+            z-index: 0;
+            pointer-events: none;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(15, 98, 254, 0.10), rgba(0, 191, 179, 0.05) 45%, transparent 70%);
+            transform: translate3d(-50%, -50%, 0);
+            filter: blur(10px);
+            will-change: transform;
+        }
+
+        /* ============ BACKGROUND: AURORA + MESH + PARTICLES + NOISE ============ */
+        .aurora-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 900px;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .aurora-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(70px);
+            opacity: 0.55;
+            mix-blend-mode: multiply;
+            will-change: transform;
+        }
+
+        .aurora-blob.b1 {
+            width: 520px;
+            height: 520px;
+            background: radial-gradient(circle, #9FC3FF, transparent 70%);
+            top: -160px;
+            left: -80px;
+            animation: driftA 22s ease-in-out infinite;
+        }
+
+        .aurora-blob.b2 {
+            width: 460px;
+            height: 460px;
+            background: radial-gradient(circle, #9BEAE2, transparent 70%);
+            top: -100px;
+            right: -60px;
+            animation: driftB 26s ease-in-out infinite;
+        }
+
+        .aurora-blob.b3 {
+            width: 420px;
+            height: 420px;
+            background: radial-gradient(circle, #C9D6FF, transparent 70%);
+            top: 220px;
+            left: 38%;
+            animation: driftC 30s ease-in-out infinite;
+        }
+
+        .aurora-blob.b4 {
+            width: 340px;
+            height: 340px;
+            background: radial-gradient(circle, #B9E3FF, transparent 70%);
+            top: 60px;
+            right: 28%;
+            animation: driftA 18s ease-in-out infinite reverse;
+            opacity: 0.4;
+        }
+
+        @keyframes driftA {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(40px, 50px) scale(1.08);
+            }
+        }
+
+        @keyframes driftB {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(-50px, 30px) scale(0.95);
+            }
+        }
+
+        @keyframes driftC {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(30px, -40px) scale(1.1);
+            }
+        }
+
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .noise-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.035;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        main,
+        .navbar,
+        footer {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ============ LOADER ============ */
+        #loader {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: linear-gradient(180deg, #0A1B33, #0D2A52);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 22px;
+            transition: opacity .6s var(--ease-out), visibility .6s;
+        }
+
+        #loader.hide {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-mark {
+            position: relative;
+            width: 64px;
+            height: 64px;
+        }
+
+        .loader-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2.5px solid rgba(255, 255, 255, 0.12);
+            border-top-color: var(--teal-400);
+            animation: spin 1s linear infinite;
+        }
+
+        .loader-core {
+            position: absolute;
+            inset: 16px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, var(--blue-700), var(--teal-500));
+            animation: pulseCore 1.4s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulseCore {
+
+            0%,
+            100% {
+                transform: scale(0.85);
+                opacity: 0.85;
+            }
+
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .loader-text {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 12.5px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* ============ NAVBAR ============ */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(20px) saturate(160%);
+            border-bottom: 1px solid rgba(227, 232, 239, 0.7);
+            transition: padding .35s var(--ease-out), box-shadow .35s ease, background .35s ease;
+        }
+
+        .navbar.scrolled {
+            box-shadow: 0 8px 30px rgba(13, 42, 82, 0.08);
+            background: rgba(255, 255, 255, 0.85);
+        }
+
+        .navbar-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 16px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: padding .35s var(--ease-out);
+        }
+
+        .navbar.scrolled .navbar-inner {
+            padding: 11px 40px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, var(--blue-700), var(--blue-900));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(15, 98, 254, 0.35), 0 0 0 0 rgba(15, 98, 254, 0.4);
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow .4s ease, transform .4s var(--ease-spring);
+        }
+
+        .brand-mark::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+            background-size: 220% 100%;
+            background-position: 120% 0;
+            animation: sheen 3.4s ease-in-out infinite;
+        }
+
+        @keyframes sheen {
+
+            0%,
+            60% {
+                background-position: 120% 0;
+            }
+
+            100% {
+                background-position: -40% 0;
+            }
+        }
+
+        .brand:hover .brand-mark {
+            transform: rotate(-6deg) scale(1.06);
+            box-shadow: 0 8px 22px rgba(15, 98, 254, 0.45);
+        }
+
+        .brand-text h1 {
+            font-size: 16.5px;
+            font-weight: 700;
+            color: var(--ink);
+            line-height: 1.25;
+        }
+
+        .brand-text p {
+            font-size: 11.5px;
+            color: var(--gray-600);
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .nav-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            padding: 7px 14px 7px 10px;
+            border-radius: 100px;
+            box-shadow: var(--shadow-soft);
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--gray-600);
+            transition: box-shadow .3s ease;
+        }
+
+        .nav-status:hover {
+            box-shadow: 0 0 0 4px rgba(18, 183, 106, 0.12), var(--shadow-soft);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 0 0 rgba(18, 183, 106, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(18, 183, 106, 0.45);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(18, 183, 106, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(18, 183, 106, 0);
+            }
+        }
+
+        /* ============ HERO ============ */
+        .hero {
+            padding: 88px 40px 52px;
+            position: relative;
+        }
+
+        .hero-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--blue-700);
+            background: var(--blue-100);
+            padding: 7px 14px;
+            border-radius: 100px;
+            margin-bottom: 24px;
+            box-shadow: 0 0 0 1px rgba(15, 98, 254, 0.08);
+            animation: floatSlow 5s ease-in-out infinite;
+        }
+
+        .eyebrow::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--blue-700);
+            box-shadow: 0 0 8px rgba(15, 98, 254, 0.7);
+        }
+
+        .hero h2 {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1.12;
+            color: var(--blue-900);
+            max-width: 840px;
+            margin-bottom: 20px;
+            background: linear-gradient(180deg, var(--blue-900) 40%, #2C4A78 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .hero h2 span {
+            background: linear-gradient(100deg, var(--blue-700), var(--teal-500) 60%, var(--violet-500));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            background-size: 200% auto;
+            animation: gradShift 6s ease-in-out infinite;
+        }
+
+        @keyframes gradShift {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        .hero p.lead {
+            font-size: 16.5px;
+            color: var(--gray-600);
+            max-width: 640px;
+            line-height: 1.65;
+            margin-bottom: 36px;
+        }
+
+        .stat-strip {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid var(--gray-200);
+            backdrop-filter: blur(14px);
+            border-radius: var(--radius-md);
+            padding: 16px 22px;
+            min-width: 180px;
+            box-shadow: var(--shadow-soft);
+            position: relative;
+            overflow: hidden;
+            animation: floatSlow 6s ease-in-out infinite;
+            transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out);
+        }
+
+        .stat-chip:nth-child(2) {
+            animation-delay: .4s;
+        }
+
+        .stat-chip:nth-child(3) {
+            animation-delay: .8s;
+        }
+
+        .stat-chip:nth-child(4) {
+            animation-delay: 1.2s;
+        }
+
+        .stat-chip:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        @keyframes floatSlow {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+        }
+
+        .stat-chip .val {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--blue-900);
+        }
+
+        .stat-chip .lbl {
+            font-size: 12px;
+            color: var(--gray-600);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* ============ SECTION GENERIC ============ */
+        section {
+            padding: 30px 40px;
+            position: relative;
+        }
+
+        .section-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .section-head {
+            margin-bottom: 24px;
+        }
+
+        .section-head .tag {
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--teal-500);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .section-head h3 {
+            font-size: 25px;
+            font-weight: 700;
+            color: var(--blue-900);
+        }
+
+        .section-head p {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-top: 6px;
+            max-width: 600px;
+        }
+
+        /* glass card w/ spotlight + border glow */
+        .card {
+            --mx: 50%;
+            --my: 50%;
+            background: rgba(255, 255, 255, 0.66);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            outline: 1px solid var(--gray-200);
+            outline-offset: -1px;
+            backdrop-filter: blur(20px) saturate(160%);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-soft);
+            transition: box-shadow .45s var(--ease-out), transform .45s var(--ease-out);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background: radial-gradient(320px circle at var(--mx) var(--my), rgba(15, 98, 254, 0.10), transparent 60%);
+            opacity: 0;
+            transition: opacity .4s ease;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lift);
+            transform: translateY(-3px);
+        }
+
+        .card>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        .glow-border {
+            position: relative;
+        }
+
+        .glow-border::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            padding: 1px;
+            z-index: 0;
+            background: conic-gradient(from var(--angle, 0deg), transparent 0deg, rgba(15, 98, 254, 0.5) 60deg, rgba(0, 191, 179, 0.6) 120deg, transparent 200deg, transparent 360deg);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity .4s ease;
+            animation: rotateAngle 4s linear infinite;
+        }
+
+        .glow-border:hover::after {
+            opacity: 1;
+        }
+
+        @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        @keyframes rotateAngle {
+            to {
+                --angle: 360deg;
+            }
+        }
+
+        /* ============ UPLOAD ============ */
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        .upload-card {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dropzone {
+            flex: 1;
+            min-height: 300px;
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(180deg, rgba(15, 98, 254, 0.02), rgba(15, 98, 254, 0.00));
+            transition: all .3s var(--ease-out);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dropzone.drag {
+            border-color: var(--blue-700);
+            background: var(--blue-100);
+            transform: scale(1.01);
+            box-shadow: 0 0 0 6px rgba(15, 98, 254, 0.08);
+        }
+
+        .dropzone .icon-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--blue-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .4s var(--ease-spring), box-shadow .4s ease;
+        }
+
+        .dropzone:hover .icon-circle {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 10px 24px rgba(15, 98, 254, 0.22);
+        }
+
+        .dropzone h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .dropzone p {
+            font-size: 13px;
+            color: var(--gray-500);
+            max-width: 280px;
+        }
+
+        /* magnetic + morphing + gradient buttons */
+        .browse-btn {
+            margin-top: 6px;
+            padding: 11px 24px;
+            border-radius: 10px;
+            background: linear-gradient(100deg, var(--blue-700), var(--blue-600) 45%, var(--teal-500));
+            background-size: 200% auto;
+            background-position: 0% 50%;
+            color: #fff;
+            font-weight: 600;
+            font-size: 13.5px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 18px rgba(15, 98, 254, 0.3);
+            transition: background-position .5s var(--ease-out), box-shadow .3s ease, transform .25s var(--ease-spring), border-radius .35s ease;
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+        }
+
+        .browse-btn:hover {
+            background-position: 100% 50%;
+            box-shadow: 0 14px 28px rgba(15, 98, 254, 0.4);
+            border-radius: 14px;
+        }
+
+        .browse-btn:active {
+            transform: scale(0.96);
+        }
+
+        .browse-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .browse-btn.secondary {
+            background: var(--white);
+            background-image: none;
+            color: var(--blue-700);
+            border: 1.5px solid var(--blue-700);
+            box-shadow: none;
+        }
+
+        .browse-btn.secondary:hover {
+            background: var(--blue-100);
+            box-shadow: 0 8px 18px rgba(15, 98, 254, 0.15);
+        }
+
+        .ripple-span {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.55);
+            transform: scale(0);
+            animation: rippleAnim .6s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes rippleAnim {
+            to {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+
+        .preview-wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: none;
+        }
+
+        .preview-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--blue-600), var(--teal-500), transparent);
+            box-shadow: 0 0 14px 2px rgba(59, 130, 246, 0.6);
+            top: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .scan-line.active {
+            animation: scan 1.6s linear infinite;
+            opacity: 1;
+        }
+
+        @keyframes scan {
+            0% {
+                top: 0%;
+            }
+
+            100% {
+                top: 100%;
+            }
+        }
+
+        .upload-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        input[type=file] {
+            display: none;
+        }
+
+        .specs-card {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            justify-content: center;
+        }
+
+        .specs-card h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--blue-900);
+            margin-bottom: 4px;
+        }
+
+        .spec-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            opacity: 0;
+            transform: translateX(-10px);
+            animation: slideInRow .5s var(--ease-out) forwards;
+        }
+
+        .spec-row:nth-child(2) {
+            animation-delay: .08s;
+        }
+
+        .spec-row:nth-child(3) {
+            animation-delay: .16s;
+        }
+
+        .spec-row:nth-child(4) {
+            animation-delay: .24s;
+        }
+
+        .spec-row:nth-child(5) {
+            animation-delay: .32s;
+        }
+
+        @keyframes slideInRow {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .spec-row .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            background: var(--teal-500);
+            margin-top: 6px;
+            flex-shrink: 0;
+            transform: rotate(45deg);
+            box-shadow: 0 0 6px rgba(0, 191, 179, 0.6);
+        }
+
+        .spec-row .txt {
+            font-size: 13px;
+            color: var(--gray-600);
+            line-height: 1.55;
+        }
+
+        .spec-row .txt b {
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        /* ============ RESULTS ============ */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.15fr;
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        .result-card {
+            padding: 26px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .result-card h4.title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--gray-500);
+            margin-bottom: 18px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 13px;
+            width: fit-content;
+            margin-bottom: 20px;
+            animation: popIn .5s var(--ease-spring);
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .status-badge.defective {
+            background: var(--danger-bg);
+            color: var(--danger);
+            box-shadow: 0 0 0 5px rgba(240, 68, 56, 0.08);
+        }
+
+        .status-badge.normal {
+            background: var(--success-bg);
+            color: var(--success);
+            box-shadow: 0 0 0 5px rgba(18, 183, 106, 0.08);
+        }
+
+        .status-badge .sdot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .defect-name {
+            font-size: 23px;
+            font-weight: 700;
+            color: var(--blue-900);
+            margin-bottom: 6px;
+        }
+
+        .defect-sub {
+            font-size: 12.5px;
+            color: var(--gray-500);
+            margin-bottom: 22px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .metric-row:first-of-type {
+            border-top: none;
+        }
+
+        .metric-row .k {
+            font-size: 12.5px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .metric-row .v {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--ink);
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .conf-bar-track {
+            height: 6px;
+            border-radius: 6px;
+            background: var(--gray-200);
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .conf-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            background: linear-gradient(90deg, var(--blue-700), var(--teal-500));
+            width: 0%;
+            transition: width 1.4s var(--ease-out);
+            box-shadow: 0 0 10px rgba(15, 98, 254, 0.5);
+        }
+
+        /* Gauge */
+        .gauge-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 6px;
+        }
+
+        .gauge-center-val {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 30px;
+            font-weight: 600;
+            fill: var(--blue-900);
+        }
+
+        .gauge-center-lbl {
+            font-size: 11px;
+            fill: var(--gray-500);
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        .gauge-legend {
+            display: flex;
+            gap: 18px;
+            margin-top: 10px;
+        }
+
+        .gauge-legend div {
+            font-size: 11.5px;
+            color: var(--gray-500);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gauge-legend span.sw {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        #gaugeArc {
+            filter: drop-shadow(0 0 6px rgba(15, 98, 254, 0.45));
+        }
+
+        /* GradCAM */
+        .gradcam-card {
+            padding: 26px;
+        }
+
+        .gc-viewport {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--gray-100);
+            margin-bottom: 16px;
+            border: 1px solid var(--gray-200);
+        }
+
+        .gc-viewport canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #gcOverlayCanvas {
+            clip-path: inset(0 0 0 55%);
+        }
+
+        .gc-slider-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 55%;
+            width: 2px;
+            background: #fff;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+        }
+
+        .gc-slider-handle::after {
+            content: '⇔';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 32px;
+            height: 32px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--blue-700);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .gc-tag {
+            position: absolute;
+            top: 12px;
+            padding: 5px 10px;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border-radius: 6px;
+            background: rgba(10, 27, 51, 0.72);
+            color: #fff;
+        }
+
+        .gc-tag.left {
+            left: 12px;
+        }
+
+        .gc-tag.right {
+            right: 12px;
+        }
+
+        input[type=range].gc-range {
+            width: 100%;
+            accent-color: var(--blue-700);
+            margin-bottom: 14px;
+        }
+
+        .gc-note {
+            font-size: 12.5px;
+            color: var(--gray-600);
+            line-height: 1.6;
+            background: var(--blue-100);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+        }
+
+        .gc-note b {
+            color: var(--blue-900);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 10px;
+            flex: 1;
+            color: var(--gray-500);
+            padding: 20px;
+        }
+
+        .empty-state .icon-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            max-width: 220px;
+        }
+
+        /* skeleton loading */
+        .skeleton {
+            display: none;
+        }
+
+        .skeleton.show {
+            display: block;
+        }
+
+        .sk-line {
+            height: 14px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 37%, var(--gray-100) 63%);
+            background-size: 400% 100%;
+            animation: shimmer 1.4s ease infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 100% 0;
+            }
+
+            100% {
+                background-position: 0 0;
+            }
+        }
+
+        .sk-badge {
+            width: 110px;
+            height: 28px;
+            border-radius: 100px;
+            margin-bottom: 20px;
+        }
+
+        .sk-title {
+            width: 70%;
+            height: 22px;
+        }
+
+        .sk-sub {
+            width: 50%;
+            height: 12px;
+            margin-bottom: 22px;
+        }
+
+        .sk-row {
+            width: 100%;
+        }
+
+        .sk-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 20px auto;
+        }
+
+        .sk-block {
+            width: 100%;
+            height: 100%;
+            border-radius: var(--radius-md);
+        }
+
+        /* ============ MODEL INFO ============ */
+        .model-card {
+            padding: 8px;
+        }
+
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1px;
+            background: var(--gray-200);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .model-item {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: background .3s ease, transform .3s ease;
+        }
+
+        .model-item:hover {
+            background: #fff;
+            transform: translateY(-2px);
+        }
+
+        .model-item .icon-sq {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--blue-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .35s var(--ease-spring), box-shadow .35s ease;
+        }
+
+        .model-item:hover .icon-sq {
+            transform: scale(1.1) rotate(-4deg);
+            box-shadow: 0 6px 16px rgba(15, 98, 254, 0.25);
+        }
+
+        .model-item .k {
+            font-size: 11.5px;
+            color: var(--gray-500);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .model-item .v {
+            font-size: 15.5px;
+            font-weight: 700;
+            color: var(--blue-900);
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        /* ============ AI PROCESSING PIPELINE ============ */
+        .pipeline-wrap {
+            position: relative;
+            padding-top: 6px;
+        }
+
+        .pipeline-track {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            position: relative;
+            z-index: 2;
+            overflow-x: auto;
+            padding: 8px 2px 26px;
+            scrollbar-width: thin;
+        }
+
+        .pipeline-track::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .pipeline-track::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 6px;
+        }
+
+        .pipeline-line-bg {
+            position: absolute;
+            top: 70px;
+            left: 34px;
+            right: 34px;
+            height: 2px;
+            z-index: 1;
+            background-image: repeating-linear-gradient(90deg, var(--gray-300) 0 8px, transparent 8px 16px);
+        }
+
+        .pipeline-line-fill {
+            position: absolute;
+            top: 70px;
+            left: 34px;
+            height: 3px;
+            width: 0%;
+            z-index: 1;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--blue-700), var(--teal-500), var(--violet-500), var(--blue-700));
+            background-size: 300% 100%;
+            animation: flowGrad 4s linear infinite;
+            box-shadow: 0 0 14px rgba(15, 98, 254, 0.55);
+            transition: width 1.8s var(--ease-out), height 1.8s var(--ease-out);
+        }
+
+        .pipeline-wrap.filled .pipeline-line-fill {
+            width: 100%;
+        }
+
+        @keyframes flowGrad {
+            0% {
+                background-position: 0% 0;
+            }
+
+            100% {
+                background-position: 300% 0;
+            }
+        }
+
+        .pipeline-item {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+
+        .pipeline-step {
+            width: 176px;
+            flex: 0 0 176px;
+            background: rgba(255, 255, 255, 0.66);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            outline: 1px solid var(--gray-200);
+            outline-offset: -1px;
+            backdrop-filter: blur(18px) saturate(160%);
+            border-radius: var(--radius-lg);
+            padding: 22px 18px 20px;
+            text-align: center;
+            box-shadow: var(--shadow-soft);
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(26px) scale(0.94);
+            transition: opacity .6s var(--ease-out), transform .6s var(--ease-out), box-shadow .4s ease;
+        }
+
+        .pipeline-step.in {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .pipeline-step::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1.5px;
+            z-index: 0;
+            background: conic-gradient(from 0deg, var(--blue-700), var(--teal-500), var(--violet-500), var(--blue-700));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity .4s ease;
+            animation: rotateAngle 5s linear infinite;
+        }
+
+        .pipeline-step:hover::before {
+            opacity: 0.9;
+        }
+
+        .pipeline-step:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .pipeline-step>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        .pl-num {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10.5px;
+            color: var(--gray-400);
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+
+        .pl-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            margin: 0 auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: linear-gradient(150deg, var(--blue-100), var(--teal-100));
+            box-shadow: 0 8px 18px rgba(15, 98, 254, 0.14);
+            animation: plFloat 3.6s ease-in-out infinite;
+            transition: transform .4s var(--ease-spring), box-shadow .4s ease;
+        }
+
+        .pipeline-step:hover .pl-icon {
+            transform: scale(1.12) rotate(-6deg);
+            box-shadow: 0 12px 26px rgba(15, 98, 254, 0.28);
+        }
+
+        @keyframes plFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .pipeline-step:nth-child(1) .pl-icon {
+            animation-delay: 0s;
+        }
+
+        .pl-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--blue-900);
+            margin-bottom: 5px;
+        }
+
+        .pl-desc {
+            font-size: 11.5px;
+            color: var(--gray-600);
+            line-height: 1.5;
+            margin-bottom: 10px;
+            min-height: 32px;
+        }
+
+        .pl-tag {
+            display: inline-block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--blue-700);
+            background: var(--blue-100);
+            padding: 4px 9px;
+            border-radius: 100px;
+            letter-spacing: 0.01em;
+        }
+
+        .pipeline-connector {
+            flex: 0 0 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            position: relative;
+        }
+
+        .pipeline-connector svg {
+            overflow: visible;
+        }
+
+        .pl-arrow-path {
+            stroke: var(--gray-300);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .pl-arrow-flow {
+            stroke: url(#plArrowGrad);
+            stroke-width: 2.4;
+            fill: none;
+            stroke-dasharray: 6 10;
+            stroke-linecap: round;
+            animation: plFlow 1.1s linear infinite;
+        }
+
+        @keyframes plFlow {
+            to {
+                stroke-dashoffset: -32;
+            }
+        }
+
+        .pl-chevron {
+            fill: var(--teal-500);
+            animation: chevPulse 1.4s ease-in-out infinite;
+        }
+
+        @keyframes chevPulse {
+
+            0%,
+            100% {
+                opacity: 0.5;
+                transform: translateX(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateX(3px);
+            }
+        }
+
+        @media (max-width:980px) {
+            .pipeline-track {
+                flex-direction: column;
+                overflow-x: visible;
+                padding-bottom: 4px;
+            }
+
+            .pipeline-item {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .pipeline-step {
+                width: 100%;
+                flex: 1 1 auto;
+                text-align: left;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                padding: 18px 20px;
+            }
+
+            .pl-icon {
+                margin: 0;
+                flex-shrink: 0;
+            }
+
+            .pl-num {
+                top: 10px;
+                right: 14px;
+            }
+
+            .pl-desc {
+                min-height: 0;
+            }
+
+            .pipeline-line-bg,
+            .pipeline-line-fill {
+                top: 0;
+                bottom: 0;
+                left: 47px;
+                right: auto;
+                width: 2px;
+                height: 0%;
+            }
+
+            .pipeline-line-bg {
+                height: auto;
+            }
+
+            .pipeline-wrap.filled .pipeline-line-fill {
+                width: 2px;
+                height: 100%;
+            }
+
+            .pipeline-connector {
+                height: 34px;
+                width: 100%;
+            }
+
+            .pipeline-connector svg {
+                transform: rotate(90deg);
+            }
+        }
+
+        /* ============ FOOTER ============ */
+        footer {
+            margin-top: 40px;
+            border-top: 1px solid var(--gray-200);
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .footer-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 30px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .footer-inner p {
+            font-size: 12.5px;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .footer-inner .fbrand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12.5px;
+            color: var(--gray-500);
+            font-weight: 600;
+        }
+
+        /* ============ FAB ============ */
+        .fab {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 60;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, var(--blue-700), var(--teal-500));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 28px rgba(15, 98, 254, 0.35);
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(16px) scale(0.8);
+            pointer-events: none;
+            transition: opacity .35s var(--ease-out), transform .35s var(--ease-spring), box-shadow .3s ease;
+        }
+
+        .fab.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .fab:hover {
+            box-shadow: 0 16px 36px rgba(15, 98, 254, 0.48);
+            transform: translateY(-3px) scale(1.05);
+        }
+
+        /* ============ SCROLL REVEAL ============ */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity .8s var(--ease-out), transform .8s var(--ease-out);
+        }
+
+        .fade-up.in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.001s !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001s !important;
+            }
+        }
+
+        @media (max-width:980px) {
+
+            .upload-grid,
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .model-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hero h2 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- LOADER -->
+    <div id="loader">
+        <div class="loader-mark">
+            <div class="loader-ring"></div>
+            <div class="loader-core"></div>
+        </div>
+        <div class="loader-text">Initializing Vision Engine</div>
+    </div>
+
+    <!-- AMBIENT LAYERS -->
+    <canvas id="particles"></canvas>
+    <div class="noise-overlay"></div>
+    <div class="mouse-light" id="mouseLight"></div>
+
+    <!-- CUSTOM CURSOR -->
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+
+    <main>
+
+        <!-- NAVBAR -->
+        <div class="navbar" id="navbar">
+            <div class="navbar-inner">
+                <div class="brand">
+                    <div class="brand-mark">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="3.4" stroke="white" stroke-width="1.6" />
+                            <path
+                                d="M12 3v3.2M12 17.8V21M21 12h-3.2M6.2 12H3M18.4 5.6l-2.3 2.3M7.9 16.1l-2.3 2.3M18.4 18.4l-2.3-2.3M7.9 7.9L5.6 5.6"
+                                stroke="white" stroke-width="1.6" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Manufacturing Defect Detection using Computer Vision</h1>
+                        <p>Powered by AWS SageMaker, Amazon S3, PyTorch, ResNet18 &amp; Explainable AI (Grad-CAM)</p>
+                    </div>
+                </div>
+                <div class="nav-status"><span class="pulse-dot"></span> Endpoint Online · us-east-1</div>
+            </div>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero">
+            <div class="aurora-bg">
+                <div class="aurora-blob b1"></div>
+                <div class="aurora-blob b2"></div>
+                <div class="aurora-blob b3"></div>
+                <div class="aurora-blob b4"></div>
+            </div>
+            <div class="hero-inner">
+                <span class="eyebrow">Automated Quality Inspection</span>
+                <h2 class="fade-up">Catch defects on the line <span>before they reach the customer.</span></h2>
+                <p class="lead fade-up">Upload a product image and the system runs it through a fine‑tuned ResNet18
+                    vision model to flag manufacturing defects in real time, then shows exactly which regions of the
+                    image drove the decision using Grad‑CAM explainability.</p>
+                <div class="stat-strip fade-up">
+                    <div class="stat-chip">
+                        <div class="val" data-count="97.73" data-suffix="%">0%</div>
+                        <div class="lbl">Test Accuracy</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="val" data-count="200" data-prefix="&lt;" data-suffix="ms">&lt;0ms</div>
+                        <div class="lbl">Inference Latency</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="val" data-count="4" data-suffix="">0</div>
+                        <div class="lbl">Defect Classes · MVTec Bottle</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="val">ResNet18</div>
+                        <div class="lbl">Backbone Architecture</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UPLOAD -->
+        <section>
+            <div class="section-inner">
+                <div class="section-head fade-up">
+                    <span class="tag">Step 01 — Input</span>
+                    <h3>Upload a product image</h3>
+                    <p>Drag and drop an image of the item you want inspected, or browse from your device. JPG, PNG — up
+                        to 10MB.</p>
+                </div>
+
+                <div class="upload-grid fade-up">
+                    <div class="card glow-border upload-card">
+                        <div class="dropzone" id="dropzone">
+                            <div class="preview-wrap" id="previewWrap" {% if uploaded_image %}style="display:block;"{% endif %}>
+                                <img id="previewImg" src="{{ uploaded_image if uploaded_image else '' }}"
+                                    alt="Uploaded product preview">
+                                <div class="scan-line" id="scanLine"></div>
+                            </div>
+                            <div id="dzEmpty" {% if uploaded_image %}style="display:none;"{% endif %}>
+                                <div class="icon-circle">
+                                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke="#0F62FE" stroke-width="1.8"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                        <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#0F62FE"
+                                            stroke-width="1.8" stroke-linecap="round" />
+                                    </svg>
+                                </div>
+                                <h4>Drag &amp; drop product image here</h4>
+                                <p>or click browse to select a file from your computer</p>
+                            </div>
+                        </div>
+                        <div class="upload-actions">
+                            <form action="/predict" method="POST" enctype="multipart/form-data" id="uploadForm">
+
+                                <input type="file" id="fileInput" name="image" accept="image/*" hidden>
+
+                                <button type="button" class="browse-btn magnetic" id="browseBtn">
+                                    Browse File
+                                </button>
+
+                                <button type="submit" class="browse-btn secondary magnetic" id="runBtn" disabled>
+                                    Run Detection
+                                </button>
+
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card specs-card">
+                        <h4>What happens after you upload</h4>
+                        <div class="spec-row">
+                            <div class="dot"></div>
+                            <div class="txt"><b>Preprocessing —</b> the image is resized, normalized and staged in
+                                Amazon S3 for inference.</div>
+                        </div>
+                        <div class="spec-row">
+                            <div class="dot"></div>
+                            <div class="txt"><b>Inference —</b> a ResNet18 classifier hosted on an AWS SageMaker
+                                endpoint scores the image.</div>
+                        </div>
+                        <div class="spec-row">
+                            <div class="dot"></div>
+                            <div class="txt"><b>Explainability —</b> Grad‑CAM generates an attention heatmap over the
+                                region that influenced the result.</div>
+                        </div>
+                        <div class="spec-row">
+                            <div class="dot"></div>
+                            <div class="txt"><b>Decision —</b> the item is classified as Normal or Defective with a
+                                confidence score.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RESULTS -->
+        <section>
+            <div class="section-inner">
+                <div class="section-head fade-up">
+                    <span class="tag">Step 02 — Output</span>
+                    <h3>Prediction results</h3>
+                    <p>Model output, confidence, and visual explanation for the uploaded item.</p>
+                </div>
+
+                <div class="results-grid fade-up">
+
+                    <!-- Prediction Card -->
+                    <div class="card result-card">
+                        <h4 class="title">Prediction Summary</h4>
+                        <div id="predEmpty" class="empty-state" {% if prediction %} style="display:none" {% endif %}>
+                            <div class="icon-circle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                                    <path d="M9 12l2 2 4-4" stroke="#8592A6" stroke-width="1.8" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                    <circle cx="12" cy="12" r="9" stroke="#8592A6" stroke-width="1.6" />
+                                </svg></div>
+                            <p>Run detection on an image to see the predicted defect type and status here.</p>
+                        </div>
+                        <div class="skeleton" id="predSkeleton">
+                            <div class="sk-line sk-badge"></div>
+                            <div class="sk-line sk-title"></div>
+                            <div class="sk-line sk-sub"></div>
+                            <div class="sk-line sk-row"></div>
+                            <div class="sk-line sk-row"></div>
+                            <div class="sk-line sk-row" style="width:60%"></div>
+                        </div>
+                        <div id="predResult" {% if not prediction %}style="display:none;"{% endif %}>
+                            <span class="status-badge {% if prediction == 'Good' %}normal{% else %}defective{% endif %}"
+                                id="statusBadge"><span class="sdot"></span><span id="statusText">
+                                    {% if prediction == "Good" %}
+                                    Normal
+                                    {% else %}
+                                    Defective
+                                    {% endif %}
+                                </span></span>
+                            <div class="defect-name" id="defectName">
+                                {{ prediction if prediction else "Waiting..." }}
+                            </div>
+                            <div class="defect-sub">Class matched · MVTec AD (Bottle) taxonomy</div>
+                            <div class="metric-row"><span class="k">Confidence Score</span><span class="v" id="confVal">
+                                    {{ confidence }}%
+                                </span></div>
+                            <div class="metric-row"><span class="k">Model</span><span class="v">ResNet18</span></div>
+                            <div class="metric-row"><span class="k">Inference Time</span><span class="v" id="latVal">184
+                                    ms</span></div>
+                            <div class="conf-bar-track">
+                                <div class="conf-bar-fill" id="confBar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gauge Card -->
+                    <div class="card result-card">
+                        <h4 class="title">Probability Indicator</h4>
+                        <div class="skeleton" id="gaugeSkeleton"
+                            style="flex:1; {% if prediction %}display:none;{% else %}display:flex;{% endif %} align-items:center; justify-content:center;">
+                            <div class="sk-line sk-circle"></div>
+                        </div>
+                        <div class="gauge-wrap" id="gaugeWrap" {% if prediction %}style="display:flex;"{% else %}style="display:none;"{% endif %}>
+                            <svg width="200" height="200" viewBox="0 0 200 200" id="gaugeSvg">
+                                <g id="ticks"></g>
+                                <circle cx="100" cy="100" r="72" fill="none" stroke="#E3E8EF" stroke-width="10" />
+                                <circle cx="100" cy="100" r="72" fill="none" stroke="url(#gaugeGrad)" stroke-width="10"
+                                    stroke-linecap="round" id="gaugeArc" stroke-dasharray="452.4"
+                                    stroke-dashoffset="452.4" transform="rotate(-90 100 100)" />
+                                <defs>
+                                    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#0F62FE" />
+                                        <stop offset="100%" stop-color="#00BFB3" />
+                                    </linearGradient>
+                                </defs>
+                                <text x="100" y="96" text-anchor="middle" class="gauge-center-val"
+                                    id="gaugeVal">0%</text>
+                                <text x="100" y="118" text-anchor="middle" class="gauge-center-lbl">CONFIDENCE</text>
+                            </svg>
+                            <div class="gauge-legend">
+                                <div><span class="sw" style="background:var(--blue-700)"></span>Model score</div>
+                                <div><span class="sw" style="background:var(--gray-200)"></span>Remaining</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GradCAM Card -->
+                    <div class="card gradcam-card">
+                        <h4 class="title">Grad‑CAM Explainability</h4>
+                        <div class="gc-viewport" id="gcViewport">
+                            {% if gradcam_image %}
+                            <!-- Base: Original Image -->
+                            <img
+                            id="gcBaseImg"
+                            src="{{ uploaded_image }}"
+                            style="
+                            width:100%;
+                            height:100%;
+                            object-fit:contain;
+                            position:absolute;
+                            inset:0;
+                            z-index:1;
+                            ">
+
+                            <!-- Overlay: Grad-CAM Image -->
+                            <img
+                            id="gcOverlayImg"
+                            src="{{ gradcam_image }}"
+                            style="
+                            width:100%;
+                            height:100%;
+                            object-fit:contain;
+                            position:absolute;
+                            inset:0;
+                            z-index:2;
+                            clip-path: inset(0 0 0 55%);
+                            ">
+                            {% else %}
+                            <canvas id="gcBaseCanvas"></canvas>
+                            <canvas id="gcOverlayCanvas"></canvas>
+                            {% endif %}
+                            
+                            <div class="gc-slider-handle" id="gcHandle" {% if gradcam_image %}style="left:55%; z-index:3;"{% endif %}></div>
+                            <span class="gc-tag left">Original</span>
+                            <span class="gc-tag right">Heatmap</span>
+                            <div class="empty-state" id="gcEmpty" style="position:absolute; inset:0; {% if prediction %}display:none;{% endif %}">
+                                <div class="icon-circle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                                        <rect x="3.5" y="4.5" width="17" height="15" rx="2" stroke="#8592A6"
+                                            stroke-width="1.6" />
+                                        <circle cx="9" cy="10" r="1.6" fill="#8592A6" />
+                                        <path d="M4 17l5-5 3.5 3.5L16 12l4.5 5" stroke="#8592A6" stroke-width="1.6" />
+                                    </svg></div>
+                                <p>The AI attention heatmap will appear here after detection.</p>
+                            </div>
+                            <div class="skeleton" id="gcSkeleton" style="position:absolute; inset:0;">
+                                <div class="sk-line sk-block" style="height:100%; margin:0;"></div>
+                            </div>
+                        </div>
+                        <input type="range" min="0" max="100" value="55" class="gc-range" id="gcRange" {% if not gradcam_image %}disabled{% endif %}>
+                        <div class="gc-note"><b>How to read this:</b> warmer regions (red / orange) show where the
+                            network focused most to reach its decision — typically the defect area. Cooler regions
+                            (blue) contributed little to the prediction.</div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- MODEL INFO -->
+        <section>
+            <div class="section-inner">
+                <div class="section-head fade-up">
+                    <span class="tag">System</span>
+                    <h3>Model information</h3>
+                </div>
+                <div class="card model-card fade-up">
+                    <div class="model-grid">
+                        <div class="model-item">
+                            <div class="icon-sq"><svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <rect x="4" y="4" width="16" height="16" rx="3" stroke="#0F62FE"
+                                        stroke-width="1.7" />
+                                    <path d="M4 9h16M9 4v16" stroke="#0F62FE" stroke-width="1.7" />
+                                </svg></div>
+                            <div class="k">Model</div>
+                            <div class="v">ResNet18</div>
+                        </div>
+                        <div class="model-item">
+                            <div class="icon-sq"><svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 7l8-4 8 4-8 4-8-4z" stroke="#0F62FE" stroke-width="1.7"
+                                        stroke-linejoin="round" />
+                                    <path d="M4 12l8 4 8-4M4 17l8 4 8-4" stroke="#0F62FE" stroke-width="1.7"
+                                        stroke-linejoin="round" />
+                                </svg></div>
+                            <div class="k">Framework</div>
+                            <div class="v">PyTorch</div>
+                        </div>
+                        <div class="model-item">
+                            <div class="icon-sq"><svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <ellipse cx="12" cy="6" rx="7" ry="2.6" stroke="#0F62FE" stroke-width="1.7" />
+                                    <path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6" stroke="#0F62FE"
+                                        stroke-width="1.7" />
+                                    <path d="M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6" stroke="#0F62FE"
+                                        stroke-width="1.7" />
+                                </svg></div>
+                            <div class="k">Dataset</div>
+                            <div class="v" style="font-size:13.5px;">MVTec AD (Bottle)</div>
+                        </div>
+                        <div class="model-item">
+                            <div class="icon-sq"><svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="8" stroke="#0F62FE" stroke-width="1.7" />
+                                    <circle cx="12" cy="12" r="3.4" stroke="#0F62FE" stroke-width="1.7" />
+                                    <path d="M12 4v2.4M12 17.6V20M20 12h-2.4M6.4 12H4" stroke="#0F62FE"
+                                        stroke-width="1.7" stroke-linecap="round" />
+                                </svg></div>
+                            <div class="k">Test Accuracy</div>
+                            <div class="v">97.73%</div>
+                        </div>
+                        <div class="model-item">
+                            <div class="icon-sq"><svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M7 17a4 4 0 01-.6-7.96A5.5 5.5 0 0117 8.5 4 4 0 0117 17H7z"
+                                        stroke="#0F62FE" stroke-width="1.7" stroke-linejoin="round" />
+                                </svg></div>
+                            <div class="k">Platform</div>
+                            <div class="v" style="font-size:13.5px;">AWS SageMaker</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI PROCESSING PIPELINE -->
+        <section>
+            <div class="section-inner">
+                <div class="section-head fade-up">
+                    <span class="tag">System Workflow</span>
+                    <h3>AI processing pipeline</h3>
+                    <p>From the moment an image is uploaded to the final verdict, here's exactly how the system reasons
+                        about it.</p>
+                </div>
+
+                <div class="pipeline-wrap">
+                    <div class="pipeline-line-bg"></div>
+                    <div class="pipeline-line-fill" id="plLineFill"></div>
+
+                    <div class="pipeline-track" id="pipelineTrack">
+
+                        <div class="pipeline-item">
+                            <div class="pipeline-step" style="transition-delay:0.00s">
+                                <span class="pl-num">01</span>
+                                <div class="pl-icon">📤</div>
+                                <div class="pl-title">Upload Image</div>
+                                <div class="pl-desc">Product photo is captured and staged in Amazon S3.</div>
+                                <span class="pl-tag">Image Selected</span>
+                            </div>
+                        </div>
+
+                        <div class="pipeline-connector">
+                            <svg width="46" height="20" viewBox="0 0 46 20">
+                                <defs>
+                                    <linearGradient id="plArrowGrad" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stop-color="#0F62FE" />
+                                        <stop offset="100%" stop-color="#00BFB3" />
+                                    </linearGradient>
+                                </defs>
+                                <path class="pl-arrow-path" d="M2 10 H38" />
+                                <path class="pl-arrow-flow" d="M2 10 H38" />
+                                <path class="pl-chevron" d="M34 5l9 5-9 5z" />
+                            </svg>
+                        </div>
+
+                        <div class="pipeline-item">
+                            <div class="pipeline-step" style="transition-delay:0.08s">
+                                <span class="pl-num">02</span>
+                                <div class="pl-icon">🖼️</div>
+                                <div class="pl-title">Preprocessing</div>
+                                <div class="pl-desc">Image is resized and normalized for the model input.</div>
+                                <span class="pl-tag">Resize · Normalize</span>
+                            </div>
+                        </div>
+
+                        <div class="pipeline-connector">
+                            <svg width="46" height="20" viewBox="0 0 46 20">
+                                <path class="pl-arrow-path" d="M2 10 H38" />
+                                <path class="pl-arrow-flow" d="M2 10 H38" />
+                                <path class="pl-chevron" d="M34 5l9 5-9 5z" />
+                            </svg>
+                        </div>
+
+                        <div class="pipeline-item">
+                            <div class="pipeline-step" style="transition-delay:0.16s">
+                                <span class="pl-num">03</span>
+                                <div class="pl-icon">🧠</div>
+                                <div class="pl-title">ResNet18</div>
+                                <div class="pl-desc">Fine‑tuned CNN backbone extracts visual features.</div>
+                                <span class="pl-tag">Deep Learning Inference</span>
+                            </div>
+                        </div>
+
+                        <div class="pipeline-connector">
+                            <svg width="46" height="20" viewBox="0 0 46 20">
+                                <path class="pl-arrow-path" d="M2 10 H38" />
+                                <path class="pl-arrow-flow" d="M2 10 H38" />
+                                <path class="pl-chevron" d="M34 5l9 5-9 5z" />
+                            </svg>
+                        </div>
+
+                        <div class="pipeline-item">
+                            <div class="pipeline-step" style="transition-delay:0.24s">
+                                <span class="pl-num">04</span>
+                                <div class="pl-icon">🔍</div>
+                                <div class="pl-title">Classification</div>
+                                <div class="pl-desc">Predicts the defect category from the learned classes.</div>
+                                <span class="pl-tag">Good / Broken / Contamination</span>
+                            </div>
+                        </div>
+
+                        <div class="pipeline-connector">
+                            <svg width="46" height="20" viewBox="0 0 46 20">
+                                <path class="pl-arrow-path" d="M2 10 H38" />
+                                <path class="pl-arrow-flow" d="M2 10 H38" />
+                                <path class="pl-chevron" d="M34 5l9 5-9 5z" />
+                            </svg>
+                        </div>
+
+                        <div class="pipeline-item">
+                            <div class="pipeline-step" style="transition-delay:0.32s">
+                                <span class="pl-num">05</span>
+                                <div class="pl-icon">📊</div>
+                                <div class="pl-title">Confidence</div>
+                                <div class="pl-desc">Softmax probability quantifies prediction certainty.</div>
+                                <span class="pl-tag">97.73% Test Accuracy</span>
+                            </div>
+                        </div>
+
+                        <div class="pipeline-connector">
+                            <svg width="46" height="20" viewBox="0 0 46 20">
+                                <path class="pl-arrow-path" d="M2 10 H38" />
+                                <path class="pl-arrow-flow" d="M2 10 H38" />
+                                <path class="pl-chevron" d="M34 5l9 5-9 5z" />
+                            </svg>
+                        </div>
+
+                        <div class="pipeline-item">
+                            <div class="pipeline-step" style="transition-delay:0.40s">
+                                <span class="pl-num">06</span>
+                                <div class="pl-icon">🔥</div>
+                                <div class="pl-title">Grad‑CAM</div>
+                                <div class="pl-desc">Highlights the pixels that most influenced the decision.</div>
+                                <span class="pl-tag">AI Attention Map</span>
+                            </div>
+                        </div>
+
+                        <div class="pipeline-connector">
+                            <svg width="46" height="20" viewBox="0 0 46 20">
+                                <path class="pl-arrow-path" d="M2 10 H38" />
+                                <path class="pl-arrow-flow" d="M2 10 H38" />
+                                <path class="pl-chevron" d="M34 5l9 5-9 5z" />
+                            </svg>
+                        </div>
+
+                        <div class="pipeline-item">
+                            <div class="pipeline-step" style="transition-delay:0.48s">
+                                <span class="pl-num">07</span>
+                                <div class="pl-icon">✅</div>
+                                <div class="pl-title">Final Result</div>
+                                <div class="pl-desc">Status, defect type and confidence shown to the operator.</div>
+                                <span class="pl-tag">Display to User</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer>
+            <div class="footer-inner">
+                <p>Developed as an End‑to‑End Computer Vision Project for Automated Manufacturing Quality Inspection</p>
+                <div class="fbrand">
+                    <span class="pulse-dot" style="animation:none; box-shadow:none; background:var(--blue-700);"></span>
+                    Manufacturing Defect Detection · CV System
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- FAB -->
+    <button class="fab magnetic" id="fab" title="Back to top">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 19V5M12 5l-6 6M12 5l6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+        </svg>
+    </button>
+
+    <script>
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const isFinePointer = window.matchMedia('(pointer: fine)').matches;
+
+        // Jinja variables injected from backend
+        const hasPrediction = {% if prediction %}true{% else %}false{% endif %};
+        const confidenceVal = {% if confidence %}{{ confidence }}{% else %}0{% endif %};
+
+        /* ================= LOADER ================= */
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loader').classList.add('hide');
+                document.body.classList.add('ready');
+                
+                // If a prediction is present on load, trigger the results animations
+                if (hasPrediction) {
+                    animateResults();
+                }
+            }, 900);
+        });
+
+        /* ================= CUSTOM CURSOR ================= */
+        if (isFinePointer && !prefersReduced) {
+            document.documentElement.classList.add('custom-cursor');
+            const dot = document.getElementById('cursorDot');
+            const ring = document.getElementById('cursorRing');
+            const light = document.getElementById('mouseLight');
+            let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+            let rx = mx, ry = my, lx = mx, ly = my;
+
+            window.addEventListener('mousemove', (e) => {
+                mx = e.clientX; my = e.clientY;
+                dot.style.transform = `translate3d(${mx}px, ${my}px, 0) translate(-50%,-50%)`;
+            });
+
+            function loop() {
+                rx += (mx - rx) * 0.18; ry += (my - ry) * 0.18;
+                ring.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%,-50%)`;
+                lx += (mx - lx) * 0.06; ly += (my - ly) * 0.06;
+                light.style.transform = `translate3d(${lx}px, ${ly}px, 0) translate(-50%,-50%)`;
+                requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+
+            const hoverables = 'a, button, .card, .dropzone, input[type=range], .model-item, .pipeline-step';
+            document.addEventListener('mouseover', (e) => {
+                if (e.target.closest(hoverables)) ring.classList.add('hover');
+            });
+            document.addEventListener('mouseout', (e) => {
+                if (e.target.closest(hoverables)) ring.classList.remove('hover');
+            });
+
+            // splash / ripple on click anywhere
+            document.addEventListener('click', (e) => {
+                const s = document.createElement('div');
+                s.className = 'splash-ripple';
+                const size = 90;
+                s.style.width = size + 'px'; s.style.height = size + 'px';
+                s.style.left = e.clientX + 'px'; s.style.top = e.clientY + 'px';
+                document.body.appendChild(s);
+                setTimeout(() => s.remove(), 700);
+            });
+        } else {
+            document.getElementById('mouseLight').style.display = 'none';
+        }
+
+        /* ================= PARTICLE BACKGROUND ================= */
+        (function () {
+            const canvas = document.getElementById('particles');
+            const ctx = canvas.getContext('2d');
+            let w, h, particles = [];
+            function resize() { w = canvas.width = window.innerWidth; h = canvas.height = Math.min(window.innerHeight * 1.4, 1200); }
+            resize(); window.addEventListener('resize', resize);
+            const COUNT = prefersReduced ? 0 : 46;
+            for (let i = 0; i < COUNT; i++) {
+                particles.push({
+                    x: Math.random() * w, y: Math.random() * h,
+                    r: Math.random() * 1.8 + 0.6,
+                    vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
+                    a: Math.random() * 0.4 + 0.15
+                });
+            }
+            function draw() {
+                ctx.clearRect(0, 0, w, h);
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy;
+                    if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+                    if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(15,98,254,${p.a})`;
+                    ctx.fill();
+                });
+                requestAnimationFrame(draw);
+            }
+            draw();
+        })();
+
+        /* ================= NAVBAR SHRINK + FAB + PARALLAX ================= */
+        const navbar = document.getElementById('navbar');
+        const fab = document.getElementById('fab');
+        const blobs = document.querySelectorAll('.aurora-blob');
+        window.addEventListener('scroll', () => {
+            const y = window.scrollY;
+            navbar.classList.toggle('scrolled', y > 10);
+            fab.classList.toggle('show', y > 500);
+            if (!prefersReduced) {
+                blobs.forEach((b, i) => { b.style.transform += ''; b.style.setProperty('--py', (y * 0.08 * (i % 2 ? 1 : -1)) + 'px'); });
+                document.querySelector('.aurora-bg').style.transform = `translateY(${y * 0.15}px)`;
+            }
+        }, { passive: true });
+
+        fab.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+        /* ================= SCROLL REVEAL (staggered) ================= */
+        const faders = document.querySelectorAll('.fade-up');
+        faders.forEach((f, i) => { f.style.transitionDelay = (i % 4) * 0.08 + 's'; });
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+        }, { threshold: 0.12 });
+        faders.forEach(f => io.observe(f));
+        setTimeout(() => document.querySelectorAll('.hero .fade-up').forEach(f => f.classList.add('in')), 300);
+
+        /* ================= AI PIPELINE REVEAL ================= */
+        const plSteps = document.querySelectorAll('.pipeline-step');
+        const plIo = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); plIo.unobserve(e.target); } });
+        }, { threshold: 0.2 });
+        plSteps.forEach(s => plIo.observe(s));
+
+        const plWrap = document.querySelector('.pipeline-wrap');
+        if (plWrap) {
+            const plLineIo = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        requestAnimationFrame(() => { plWrap.classList.add('filled'); });
+                        plLineIo.unobserve(e.target);
+                    }
+                });
+            }, { threshold: 0.25 });
+            plLineIo.observe(plWrap);
+        }
+
+        /* ================= COUNTER ANIMATION ================= */
+        const counters = document.querySelectorAll('[data-count]');
+        const cIo = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    const el = e.target;
+                    const target = parseFloat(el.dataset.count);
+                    const suffix = el.dataset.suffix || '';
+                    const prefix = el.dataset.prefix || '';
+                    const decimals = el.dataset.count.includes('.') ? 2 : 0;
+                    let start = null; const dur = 1400;
+                    function step(ts) {
+                        if (!start) start = ts;
+                        const p = Math.min((ts - start) / dur, 1);
+                        const eased = 1 - Math.pow(1 - p, 3);
+                        const val = (target * eased).toFixed(decimals);
+                        el.textContent = prefix + val + suffix;
+                        if (p < 1) requestAnimationFrame(step);
+                        else el.textContent = prefix + target + suffix;
+                    }
+                    requestAnimationFrame(step);
+                    cIo.unobserve(el);
+                }
+            });
+        }, { threshold: 0.5 });
+        counters.forEach(c => cIo.observe(c));
+
+        /* ================= CARD SPOTLIGHT ================= */
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const r = card.getBoundingClientRect();
+                card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+                card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+            });
+        });
+
+        /* ================= MAGNETIC BUTTONS ================= */
+        document.querySelectorAll('.magnetic').forEach(btn => {
+            btn.addEventListener('mousemove', (e) => {
+                const r = btn.getBoundingClientRect();
+                const x = e.clientX - r.left - r.width / 2;
+                const y = e.clientY - r.top - r.height / 2;
+                btn.style.transform = `translate(${x * 0.18}px, ${y * 0.35}px)`;
+            });
+            btn.addEventListener('mouseleave', () => { btn.style.transform = 'translate(0,0)'; });
+        });
+
+        /* ================= RIPPLE ON BUTTON CLICK ================= */
+        document.querySelectorAll('.browse-btn').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                const r = this.getBoundingClientRect();
+                const span = document.createElement('span');
+                const size = Math.max(r.width, r.height);
+                span.className = 'ripple-span';
+                span.style.width = span.style.height = size + 'px';
+                span.style.left = (e.clientX - r.left - size / 2) + 'px';
+                span.style.top = (e.clientY - r.top - size / 2) + 'px';
+                this.appendChild(span);
+                setTimeout(() => span.remove(), 650);
+            });
+        });
+
+        /* ================= gauge ticks ================= */
+        const ticksG = document.getElementById('ticks');
+        if (ticksG) {
+            const cx = 100, cy = 100, r1 = 84, r2 = 90;
+            for (let i = 0; i < 40; i++) {
+                const a = (i / 40) * 2 * Math.PI - Math.PI / 2;
+                const x1 = cx + r1 * Math.cos(a), y1 = cy + r1 * Math.sin(a);
+                const x2 = cx + r2 * Math.cos(a), y2 = cy + r2 * Math.sin(a);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('stroke', i % 5 === 0 ? '#B9C4D3' : '#DCE3EC');
+                line.setAttribute('stroke-width', i % 5 === 0 ? '2' : '1');
+                ticksG.appendChild(line);
+            }
+        }
+
+        /* ================= UPLOAD LOGIC ================= */
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const runBtn = document.getElementById('runBtn');
+        const previewWrap = document.getElementById('previewWrap');
+        const previewImg = document.getElementById('previewImg');
+        const dzEmpty = document.getElementById('dzEmpty');
+        const scanLine = document.getElementById('scanLine');
+
+        let currentImageEl = null;
+
+        // Initialize currentImageEl if there is a preview image loaded on page load
+        if (previewImg && previewImg.src && !previewImg.src.endsWith('/') && !previewImg.src.endsWith('/#')) {
+            currentImageEl = previewImg;
+        }
+
+        browseBtn.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('click', (e) => { if (e.target === dropzone || e.target === dzEmpty) fileInput.click(); });
+
+        ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('drag'); }));
+        ['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+        dropzone.addEventListener('drop', (e) => {
+            const f = e.dataTransfer.files[0];
+            if (f) handleFile(f);
+        });
+        fileInput.addEventListener('change', (e) => {
+            const f = e.target.files[0];
+            if (f) handleFile(f);
+        });
+
+        function handleFile(file) {
+            // Support dropped files in the HTML Form submission
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+
+            const url = URL.createObjectURL(file);
+            previewImg.src = url;
+            previewImg.onload = () => {
+                currentImageEl = previewImg;
+                dzEmpty.style.display = 'none';
+                previewWrap.style.display = 'block';
+                runBtn.disabled = false;
+                resetResults();
+            };
+        }
+
+        function resetResults() {
+            document.getElementById('predResult').style.display = 'none';
+            document.getElementById('predEmpty').style.display = 'flex';
+            document.getElementById('predSkeleton').classList.remove('show');
+            document.getElementById('gaugeWrap').style.display = 'none';
+            document.getElementById('gaugeSkeleton').style.display = 'none';
+            document.getElementById('gcSkeleton').classList.remove('show');
+            document.getElementById('gcEmpty').style.display = 'flex';
+            document.getElementById('gaugeVal').textContent = '0%';
+            document.getElementById('gaugeArc').setAttribute('stroke-dashoffset', '452.4');
+            document.getElementById('gcRange').disabled = true;
+            
+            // If Grad-CAM images were displayed, hide/clean them
+            const baseImg = document.getElementById('gcBaseImg');
+            const overlayImg = document.getElementById('gcOverlayImg');
+            if (baseImg) baseImg.style.display = 'none';
+            if (overlayImg) overlayImg.style.display = 'none';
+        }
+
+        /* ================= RUN DETECTION FORM SUBMISSION ================= */
+        runBtn.addEventListener('click', (e) => {
+            const form = document.getElementById('uploadForm');
+            if (!form || !fileInput.files.length) return;
+            
+            e.preventDefault();
+            runBtn.disabled = true;
+            runBtn.textContent = 'Analyzing…';
+            scanLine.classList.add('active');
+
+            // Show loading states
+            document.getElementById('predEmpty').style.display = 'none';
+            document.getElementById('predResult').style.display = 'none';
+            document.getElementById('predSkeleton').classList.add('show');
+            
+            document.getElementById('gaugeWrap').style.display = 'none';
+            document.getElementById('gaugeSkeleton').style.display = 'flex';
+
+            document.getElementById('gcEmpty').style.display = 'none';
+            document.getElementById('gcSkeleton').classList.add('show');
+
+            // Submit form to trigger Flask backend /predict route
+            setTimeout(() => {
+                form.submit();
+            }, 300);
+        });
+
+        /* ================= RESULTS ANIMATION ================= */
+        function animateResults() {
+            // Animate confidence score bar
+            const bar = document.getElementById('confBar');
+            if (bar) {
+                requestAnimationFrame(() => {
+                    bar.style.width = confidenceVal + '%';
+                });
+            }
+
+            // Gauge animation
+            const circumference = 452.4; // 2*PI*72
+            const target = circumference - (confidenceVal / 100) * circumference;
+            const gaugeVal = document.getElementById('gaugeVal');
+            const arc = document.getElementById('gaugeArc');
+            
+            if (gaugeVal && arc) {
+                let start = null;
+                const duration = 1200;
+                function animate(ts) {
+                    if (!start) start = ts;
+                    const p = Math.min((ts - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - p, 3);
+                    const current = circumference - eased * (circumference - target);
+                    arc.setAttribute('stroke-dashoffset', current);
+                    gaugeVal.textContent = Math.round(eased * confidenceVal) + '%';
+                    if (p < 1) requestAnimationFrame(animate);
+                }
+                requestAnimationFrame(animate);
+            }
+        }
+
+        /* ================= GRAD-CAM COMPARISON SLIDER ================= */
+        const gcRangeEl = document.getElementById('gcRange');
+        const gcHandle = document.getElementById('gcHandle');
+        
+        if (gcRangeEl) {
+            gcRangeEl.addEventListener('input', (e) => updateGcSlider(e.target.value));
+        }
+
+        function updateGcSlider(val) {
+            const overlayImg = document.getElementById('gcOverlayImg');
+            if (overlayImg) {
+                overlayImg.style.clipPath = `inset(0 0 0 ${val}%)`;
+            }
+            const overlayCanvas = document.getElementById('gcOverlayCanvas');
+            if (overlayCanvas) {
+                overlayCanvas.style.clipPath = `inset(0 0 0 ${val}%)`;
+            }
+            if (gcHandle) {
+                gcHandle.style.left = val + '%';
+            }
+        }
+    </script>
+</body>
+
+</html>

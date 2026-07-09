@@ -1,0 +1,33 @@
+# Virtual Environment
+venv/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# VS Code
+.vscode/
+
+# Environment Variables
+.env
+
+# Uploaded Images
+static/uploads/*
+
+# Generated Grad-CAM Images
+static/gradcam/*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python Build
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
