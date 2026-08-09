@@ -1,8 +1,0 @@
-{
-    "$schema": "https://openapi.vercel.sh/vercel.json",
-    "functions": {
-        "app.py": {
-            "excludeFiles": "{venv/**,.git/**,__pycache__/**,static/uploads/**,static/gradcam/**,**/*.ipynb}"
-        }
-    }
-}
