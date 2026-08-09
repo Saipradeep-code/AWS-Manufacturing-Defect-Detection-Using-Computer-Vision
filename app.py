@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request
 from PIL import Image
+import io
+import base64
 import os
-from werkzeug.utils import secure_filename
 
 from utils.model_loader import load_model
 from utils.preprocessing import get_transforms
@@ -10,14 +11,28 @@ from utils.gradcam import generate_gradcam
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "static/uploads"
-GRADCAM_FOLDER = "static/gradcam"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "model",
+    "best_resnet18_bottle.pth"
+)
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(GRADCAM_FOLDER, exist_ok=True)
-
-model = load_model("model/best_resnet18_bottle.pth")
+# Load model when the server starts
+model = load_model(MODEL_PATH)
 transform = get_transforms()
+
+
+def image_to_data_url(image):
+    """Convert PIL image to a browser-friendly data URL."""
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+
+    encoded = base64.b64encode(
+        buffer.getvalue()
+    ).decode("utf-8")
+
+    return f"data:image/png;base64,{encoded}"
 
 
 @app.route("/")
@@ -27,6 +42,7 @@ def home():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+
     if "image" not in request.files:
         return "No file uploaded", 400
 
@@ -35,41 +51,33 @@ def predict():
     if file.filename == "":
         return "No selected file", 400
 
-    filename = secure_filename(file.filename)
-    if not filename:
-        filename = "uploaded_image.png"
-
-    upload_path = os.path.join(UPLOAD_FOLDER, filename)
-    
+    # Read uploaded image
     try:
         image = Image.open(file).convert("RGB")
-        image.save(upload_path)
     except Exception as e:
         return f"Invalid or corrupted image: {str(e)}", 400
 
+    # Run prediction
     try:
+
         prediction, confidence = predict_image(
             model,
             image,
             transform
         )
 
+        # Generate Grad-CAM
         gradcam = generate_gradcam(
             model,
             image,
             transform
         )
 
-        gradcam_filename = f"gradcam_{filename}"
-        if not gradcam_filename.lower().endswith('.png'):
-            gradcam_filename = os.path.splitext(gradcam_filename)[0] + '.png'
-            
-        gradcam_path = os.path.join(GRADCAM_FOLDER, gradcam_filename)
-        Image.fromarray(gradcam).save(gradcam_path)
+        gradcam_image = Image.fromarray(gradcam)
 
-        # Normalize paths for URLs (Windows compatible slashes)
-        uploaded_image_url = upload_path.replace("\\", "/")
-        gradcam_image_url = gradcam_path.replace("\\", "/")
+        # Convert images to browser-displayable URLs
+        uploaded_image_url = image_to_data_url(image)
+        gradcam_image_url = image_to_data_url(gradcam_image)
 
         return render_template(
             "index.html",
@@ -78,6 +86,7 @@ def predict():
             uploaded_image=uploaded_image_url,
             gradcam_image=gradcam_image_url
         )
+
     except Exception as e:
         return f"Error during model inference: {str(e)}", 500
 
