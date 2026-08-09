@@ -1,5 +1,9 @@
 # AWS Manufacturing Defect Detection using Computer Vision
 
+## Deployment Link
+
+https://aws-manufacturing-defect-detection-using-computer-ksvqtyjqv.vercel.app/
+
 ## Overview
 
 AWS Manufacturing Defect Detection using Computer Vision is an AI-powered quality inspection system designed to automatically identify manufacturing defects in bottle products using Deep Learning and Computer Vision.
