@@ -1,5 +1,6 @@
 # AWS Manufacturing Defect Detection using Computer Vision
-***This project website is completely made with html for time constrains***
+***This project website is completely made with html from Claude***
+***The main purpose of this project is to demonstrate the key Machine Learning and AWS Knowledge***
 ## Deployment Link
 
 https://aws-manufacturing-defect-detection-using-computer-ksvqtyjqv.vercel.app/
