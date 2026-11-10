@@ -3,7 +3,7 @@
 ***The main purpose of this project is to demonstrate the key Machine Learning and AWS Knowledge***
 ## Deployment Link
 
-https://aws-manufacturing-defect-detection-using-computer-ksvqtyjqv.vercel.app/
+[https://aws-manufacturing-defect-detection-using-computer-ksvqtyjqv.vercel.app/](https://aws-manufacturing-defect-detection.vercel.app/)
 
 ## Overview
 
